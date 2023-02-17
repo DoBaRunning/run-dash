@@ -9,7 +9,7 @@ st.set_page_config(page_title="Running Dashboard", page_icon=":runner:", layout=
 # ---- READ EXCEL ----
 @st.cache_data
 def get_data_from_excel():
-    df = pd.read_excel(io=r"C:\Users\tuejc6\PycharmProjects\Streamlit_dash\Laufzeiten.xlsx", engine='openpyxl', skiprows=0, usecols="A:D")
+    df = pd.read_excel(io=r"Laufzeiten.xlsx", engine='openpyxl', skiprows=0, usecols="A:D")
     # Add 'hour' column to dataframe
     # df["hour"] = pd.to_datetime(df["Time"], format="%H:%M:%S").dt.hour
     return df
@@ -29,19 +29,6 @@ df_selection = df.query(
     "Strecke == @strecke"
 )
 
-
-# customer_type = st.sidebar.multiselect(
-#     "Select the Customer Type:",
-#     options=df["Customer_type"].unique(),
-#     default=df["Customer_type"].unique(),
-# )
-#
-# gender = st.sidebar.multiselect(
-#     "Select the Gender:",
-#     options=df["Gender"].unique(),
-#     default=df["Gender"].unique()
-# )
-#
 # df_selection = df.query(
 #     "City == @city & Customer_type ==@customer_type & Gender == @gender"
 # )
