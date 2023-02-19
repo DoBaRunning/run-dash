@@ -1,7 +1,8 @@
 import pandas as pd
 import plotly.express as px
 import streamlit as st
-
+import datetime
+import plotly.graph_objects as go
 
 # emojis: https://www.webfx.com/tools/emoji-cheat-sheet/
 st.set_page_config(page_title="Running Dashboard", page_icon=":runner:", layout="wide")
@@ -19,19 +20,28 @@ df = get_data_from_excel()
 
 # ---- SIDEBAR ----
 st.sidebar.header("Please Filter Here:")
-strecke = st.sidebar.multiselect(
-    "Select the Strecke:",
-    options=df["Strecke"].unique(),
-    default=df["Strecke"].unique()
+
+# Filter Strecke
+min_distance = min(df["Strecke"])
+max_distance = max(df["Strecke"])
+strecke = st.sidebar.slider("Strecke Slider", min_value=min_distance, max_value=max_distance, value=[min_distance, max_distance], step=0.5)
+
+
+months = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"]
+month_to_num = {month: i+1 for i, month in enumerate(months)}
+df["Monat"] = df["Datum"].dt.month
+# datum = st.sidebar.select_slider("Datum Slider", options=months)
+
+# Filter Datum test
+datum = st.sidebar.multiselect(
+    "Select the month:",
+    options=df["Datum"].dt.month.unique(),
+    default=df["Datum"].dt.month.unique()
 )
 
 df_selection = df.query(
-    "Strecke == @strecke"
+    "Strecke >= @strecke[0] & Strecke <= @strecke[1] & Datum.dt.month == @datum"
 )
-
-# df_selection = df.query(
-#     "City == @city & Customer_type ==@customer_type & Gender == @gender"
-# )
 
 
 
@@ -39,37 +49,63 @@ df_selection = df.query(
 st.title(":runner: Running Dashboard")
 st.markdown("##")
 
-st.dataframe(df_selection)
 
 # TOP KPI's
 total_distance = df_selection["Strecke"].sum()
-total_distance_int = int(df_selection["Strecke"].sum())
+number_of_runs = len(df_selection)
+total_time = datetime.timedelta()
+for i in df_selection["Zeit"]:
+    (h, m, s) = str(i).split(':')
+    d = datetime.timedelta(hours=int(h), minutes=int(m), seconds=int(s))
+    total_time += d
 
-# total_time = df_selection["Zeit"].sum()
-# average_rating = round(df_selection["Zeit"].mean(), 1)
-# star_rating = ":star:" * int(round(average_rating, 0))
-# average_sale_by_transaction = round(df_selection["Total"].mean(), 2)
-
-left_column, middle_column, right_column = st.columns(3)
+left_column, inter_cols_pace, right_column = st.columns((8,1,5))
 with left_column:
-    st.subheader("Total Distance:")
-    st.subheader(f"{total_distance} km")
-with middle_column:
-    st.subheader("Total Distance:")
-    st.subheader(f"{total_distance_int} km")
+
+    # Set the "Date" column as the index of the dataframe
+    df2 = df_selection.copy()
+
+    # Set the "Date" column as the index of the dataframe
+    df2 = df2.set_index('Datum')
+
+    # Resample the data to daily frequency and fill missing dates
+    df_resampled = df2.resample('D').asfreq()
+
+    # Fill missing values with default values
+    df_resampled = df_resampled.fillna({'Strecke': 0,
+                                        'Zeit': pd.Timedelta(0),
+                                        'Geschwindigkeit': pd.Timedelta(0)})
+
+    # Reset the index of the dataframe
+    df_resampled = df_resampled.reset_index()
+
+    fig_run_distance = px.line(df_resampled, x="Datum", y="Strecke", title='Running distance', template="plotly_white", markers=False)
+    df_resampled_nonzero = df_resampled.where(df_resampled["Strecke"] > 0)
+    fig_run_scatter = px.scatter(df_resampled_nonzero, x="Datum", y="Strecke", template="plotly_white")
+    fig_run_distance_scatter = go.Figure(data=fig_run_distance.data + fig_run_scatter.data)
+    st.plotly_chart(fig_run_distance_scatter, use_container_width=True)
+    st.markdown("""---""")
+
+    left_column_nest, middle_column_nest, right_column_nest = st.columns(3)
+
+    left_column_nest.subheader("Total Distance:")
+    left_column_nest.subheader(f"{total_distance:.2f} km")
+
+    middle_column_nest.subheader("Total Time:")
+    middle_column_nest.subheader(f"{total_time}")
+
+    right_column_nest.subheader("Number of runs:")
+    right_column_nest.subheader(f"{number_of_runs}")
+
 with right_column:
-    st.subheader("Total Distance:")
-    st.subheader(f"{total_distance} km")
-# with middle_column:
-#     st.subheader("Average Rating:")
-#     st.subheader(f"{average_rating} {star_rating}")
-# with right_column:
-#     st.subheader("Average Sales Per Transaction:")
-#     st.subheader(f"US $ {average_sale_by_transaction}")
+    # height = (numRows + 1) * 35 + 3
+    st.dataframe(df_selection, height = 500)
+
 
 st.markdown("""---""")
 
-# # SALES BY PRODUCT LINE [BAR CHART]
+
+# SALES BY PRODUCT LINE [BAR CHART]
 # sales_by_product_line = (
 #     df_selection.groupby(by=["Product line"]).sum()[["Total"]].sort_values(by="Total")
 # )
@@ -110,12 +146,12 @@ st.markdown("""---""")
 #
 #
 # # ---- HIDE STREAMLIT STYLE ----
-# hide_st_style = """
-#             <style>
-#             #MainMenu {visibility: hidden;}
-#             footer {visibility: hidden;}
-#             header {visibility: hidden;}
-#             </style>
-#             """
-# st.markdown(hide_st_style, unsafe_allow_html=True)
-#
+hide_st_style = """
+            <style>
+            #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
+            header {visibility: hidden;}
+            </style>
+            """
+st.markdown(hide_st_style, unsafe_allow_html=True)
+
