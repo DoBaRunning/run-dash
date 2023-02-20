@@ -84,6 +84,7 @@ with left_column:
     fig_run_scatter = px.scatter(df_resampled_nonzero, x="Datum", y="Strecke", template="plotly_white")
     fig_run_distance_scatter = go.Figure(data=fig_run_distance.data + fig_run_scatter.data)
     st.plotly_chart(fig_run_distance_scatter, use_container_width=True)
+
     st.markdown("""---""")
 
     left_column_nest, middle_column_nest, right_column_nest = st.columns(3)
@@ -96,6 +97,19 @@ with left_column:
 
     right_column_nest.subheader("Number of runs:")
     right_column_nest.subheader(f"{number_of_runs}")
+
+    st.markdown("""---""")
+
+    left_column_nest.subheader("Total Time:")
+    input_days = left_column_nest.number_input("Number of days", min_value=0)
+
+    total_distance_year = total_distance * input_days/len(df_resampled)
+    middle_column_nest.subheader(f"Total Distance in {input_days} days:")
+    middle_column_nest.subheader(f"{total_distance_year:.2f} km")
+
+    number_of_runs_year = number_of_runs * input_days/len(df_resampled)
+    right_column_nest.subheader(f"Number of runs in {input_days} runs:")
+    right_column_nest.subheader(f"{int(number_of_runs_year)}")
 
 with right_column:
     # height = (numRows + 1) * 35 + 3
